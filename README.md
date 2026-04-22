@@ -16,13 +16,12 @@ TechMindMit Universe is a futuristic, browser-based 3D simulation that allows us
         Zoom Lock: Controlled through a pinch gesture.
 
     Futuristic HUD: A professional glassmorphism overlay providing real-time system metrics and status updates.
-
-Gesture,Action,Visual Effect
-Open Palm 🖐️,Spatial Rotation,Rotates the universe based on hand movement
-Closed Fist ✊,Supernova Pulse,Expands a glowing energy ring from the Earth
-V-Sign ✌️,Hyper-Speed,Rapidly accelerates planetary and cosmic rotation
-Pinch 👌,Zoom Control,Smoothly zooms the camera into the Earth's surface
-
+🎮 Gesture Commands
+Gesture	Action	Visual Effect
+Open Palm 🖐️	Spatial Rotation	Rotates the universe based on hand movement
+Closed Fist ✊	Supernova Pulse	Expands a glowing energy ring from the Earth
+V-Sign ✌️	Hyper-Speed	Rapidly accelerates planetary and cosmic rotation
+Pinch 👌	Zoom Control	Smoothly zooms the camera into the Earth's surface
 🛠️ Technology Stack
 
     Three.js: Primary 3D engine for WebGL rendering and planetary physics.
