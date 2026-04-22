@@ -17,7 +17,7 @@ TechMindMit Universe is a futuristic, browser-based 3D simulation that allows us
 
     Futuristic HUD: A professional glassmorphism overlay providing real-time system metrics and status updates.
 
-===>Gesture,Action,Visual Effect<===
+Gesture,Action,Visual Effect
 Open Palm 🖐️,Spatial Rotation,Rotates the universe based on hand movement
 Closed Fist ✊,Supernova Pulse,Expands a glowing energy ring from the Earth
 V-Sign ✌️,Hyper-Speed,Rapidly accelerates planetary and cosmic rotation
