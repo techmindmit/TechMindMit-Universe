@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TECHMINDMIT | Ultimate AI Engine</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+        
+        :root { --neon: #00f3ff; --lava: #ff3300; --gold: #ffcc00; --void: #020205; }
+        
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: var(--void); overflow: hidden; font-family: 'Share Tech Mono', monospace; color: #fff; user-select: none; }
+
+        /* Responsive HUD */
+        #hud { position: absolute; width: 100%; height: 100%; z-index: 10; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: clamp(10px, 3vw, 30px); box-sizing: border-box; }
+
+        .header h1 { font-family: 'Orbitron'; font-size: clamp(1.8rem, 4vw, 3rem); letter-spacing: 6px; text-shadow: 0 0 20px var(--neon); margin: 0; text-align: center; font-weight: 900; }
+
+        .side-panel { background: rgba(5, 5, 15, 0.7); backdrop-filter: blur(15px); border: 1px solid rgba(0, 243, 255, 0.4); border-radius: 12px; padding: 20px; pointer-events: auto; max-width: 320px; box-shadow: 0 0 25px rgba(0,0,0,0.8); }
+        
+        #status-bar { font-family: 'Orbitron'; font-size: 1.2rem; color: var(--neon); font-weight: bold; text-align: center; border-bottom: 2px solid var(--neon); padding-bottom: 10px; margin-bottom: 15px; text-transform: uppercase; transition: color 0.3s; }
+
+        /* Grid for Gestures */
+        .grid-15 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: clamp(9px, 1.5vw, 11px); color: #ccc; }
+        .g-item { background: rgba(255,255,255,0.05); padding: 6px; border-radius: 4px; border-left: 2px solid var(--neon); display: flex; align-items: center; }
+        .g-item b { color: #fff; margin-left: 4px; }
+
+        /* TechMindMit Social Bar (X & Threads Included) */
+        .social-bar { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 15px; border-top: 1px solid rgba(0, 243, 255, 0.3); }
+        .s-icon { color: #fff; font-size: 1.5rem; text-decoration: none; transition: 0.3s ease; }
+        .s-icon:hover { transform: translateY(-3px) scale(1.15); }
+        
+        /* Hover Colors */
+        .s-icon.insta:hover { color: #E1306C; text-shadow: 0 0 15px #E1306C; }
+        .s-icon.fb:hover { color: #1877F2; text-shadow: 0 0 15px #1877F2; }
+        .s-icon.x:hover { color: #aaaaaa; text-shadow: 0 0 15px #ffffff; } /* X Twitter Color */
+        .s-icon.threads:hover { color: #ffffff; text-shadow: 0 0 15px #ffffff; } /* Threads Color */
+        .s-icon.yt:hover { color: #FF0000; text-shadow: 0 0 15px #FF0000; }
+
+        /* PIP Camera */
+        #cam-box { position: absolute; bottom: clamp(10px, 3vw, 30px); right: clamp(10px, 3vw, 30px); width: clamp(140px, 25vw, 240px); height: clamp(105px, 18.75vw, 180px); border: 2px solid var(--neon); border-radius: 10px; overflow: hidden; background: #000; box-shadow: 0 0 30px rgba(0, 243, 255, 0.2); z-index: 20; }
+        #v-in { display: none; } #c-out { width: 100%; height: 100%; transform: scaleX(-1); object-fit: cover; }
+
+        @media (max-width: 768px) { .grid-15 { grid-template-columns: 1fr; } .side-panel { max-width: 220px; } }
+    </style>
+</head>
+<body>
+
+    <div id="hud">
+        <div class="header"><h1>TECHMINDMIT</h1></div>
+        
+        <div class="side-panel">
+            <div id="status-bar">SYSTEM ONLINE</div>
+            <div style="font-size: 10px; color: var(--neon); margin-bottom: 15px;">> ENGINE: LUNAR_GOD_MODE</div>
+            
+            <div class="grid-15">
+                <div class="g-item">🖐️ <b>Palm:</b> Track</div><div class="g-item">✊ <b>Fist:</b> Freeze</div>
+                <div class="g-item">✌️ <b>V-Sign:</b> Hyper</div><div class="g-item">☝️ <b>Point:</b> Zoom</div>
+                <div class="g-item">👌 <b>OK:</b> Hologram</div><div class="g-item">🤟 <b>Spider:</b> Glow</div>
+                <div class="g-item">👍 <b>Up:</b> Bright</div><div class="g-item">👎 <b>Down:</b> Dark</div>
+                <div class="g-item">👆 <b>L-Shape:</b> Angle</div><div class="g-item">👐 <b>Pull:</b> Layers</div>
+                <div class="g-item">✊✊ <b>2 Fist:</b> Destroy</div><div class="g-item">🤲 <b>Cup:</b> Recover</div>
+                <div class="g-item">🙅 <b>Cross:</b> Shield</div><div class="g-item">🤏 <b>2 Pinch:</b> Reverse</div>
+                <div class="g-item" style="grid-column: span 2;">✋🤚 <b>Hands Up:</b> System Reset</div>
+            </div>
+
+            <div class="social-bar">
+                <a href="https://insta.openinapp.co/TechMindMit" target="_blank" class="s-icon insta" title="Instagram"><i class="fa-brands fa-instagram"></i></a>
+                <a href="https://fb.openinapp.co/TechMindMit" target="_blank" class="s-icon fb" title="Facebook"><i class="fa-brands fa-facebook-f"></i></a>
+                <a href="https://x.openinapp.co/TechMindMit" target="_blank" class="s-icon x" title="X (Twitter)"><i class="fa-brands fa-x-twitter"></i></a>
+                <a href="https://threads.openinapp.link/TechMindMit" target="_blank" class="s-icon threads" title="Threads"><i class="fa-brands fa-threads"></i></a>
+                <a href="https://yt.openinapp.co/TechMindMit" target="_blank" class="s-icon yt" title="YouTube"><i class="fa-brands fa-youtube"></i></a>
+            </div>
+        </div>
+    </div>
+
+    <div id="cam-box">
+        <video id="v-in" playsinline></video>
+        <canvas id="c-out"></canvas>
+    </div>
+
+    <script>
+        const videoEl = document.getElementById('v-in');
+        const canvasEl = document.getElementById('c-out');
+        const ctx = canvasEl.getContext('2d');
+        const statusBar = document.getElementById('status-bar');
+
+        // --- 1. THREE.JS ULTRA-REAL ENGINE ---
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        const mainGroup = new THREE.Group(); scene.add(mainGroup);
+
+        const texLoader = new THREE.TextureLoader();
+        const moonTex = texLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/moon_1024.jpg');
+
+        const crustMat = new THREE.MeshStandardMaterial({ color: 0xdddddd, map: moonTex, bumpMap: moonTex, bumpScale: 0.5, roughness: 0.8 });
+        
+        const leftHalf = new THREE.Mesh(new THREE.SphereGeometry(6, 64, 64, 0, Math.PI), crustMat);
+        const rightHalf = new THREE.Mesh(new THREE.SphereGeometry(6, 64, 64, Math.PI, Math.PI), crustMat);
+        mainGroup.add(leftHalf, rightHalf);
+
+        const layersGroup = new THREE.Group();
+        const mantle = new THREE.Mesh(new THREE.SphereGeometry(5.2, 32, 32), new THREE.MeshStandardMaterial({ color: 0xaa2200, emissive: 0xff3300, emissiveIntensity: 0.8, roughness: 1 }));
+        const outerCore = new THREE.Mesh(new THREE.SphereGeometry(3.5, 32, 32), new THREE.MeshStandardMaterial({ color: 0xffaa00, emissive: 0xff8800, emissiveIntensity: 1.5 }));
+        const innerCore = new THREE.Mesh(new THREE.SphereGeometry(1.5, 32, 32), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+        
+        const shield = new THREE.Mesh(new THREE.SphereGeometry(6.5, 32, 32), new THREE.MeshBasicMaterial({ color: 0x00f3ff, wireframe: true, transparent: true, opacity: 0 }));
+        
+        layersGroup.add(mantle, outerCore, innerCore);
+        layersGroup.visible = false;
+        mainGroup.add(layersGroup, shield);
+
+        const pGeo = new THREE.BufferGeometry();
+        const pPos = [];
+        for(let i=0; i<300; i++) pPos.push((Math.random()-0.5)*15, (Math.random()-0.5)*15, (Math.random()-0.5)*15);
+        pGeo.setAttribute('position', new THREE.Float32BufferAttribute(pPos, 3));
+        const pMat = new THREE.PointsMaterial({ color: 0xff3300, size: 0.2, transparent: true, opacity: 0 });
+        const particles = new THREE.Points(pGeo, pMat);
+        scene.add(particles);
+
+        const sun = new THREE.DirectionalLight(0xffffff, 1.5); sun.position.set(15, 10, 15);
+        const ambient = new THREE.AmbientLight(0x333333);
+        scene.add(sun, ambient);
+
+        const starGeo = new THREE.BufferGeometry(); const starPos = [];
+        for(let i=0; i<3000; i++) starPos.push((Math.random()-0.5)*1000, (Math.random()-0.5)*1000, (Math.random()-0.5)*1000);
+        starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starPos, 3));
+        scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({color: 0xffffff, size: 0.5})));
+
+        let defaultZ = window.innerWidth < 768 ? 40 : 25;
+        let targetCamX = 0, targetCamY = 0, targetCamZ = defaultZ;
+        camera.position.z = defaultZ;
+
+        // --- 2. GLITCH-FREE GESTURE ENGINE ---
+        let orbitSpeed = 0.002;
+        let isDestroyed = false;
+
+        function setStatus(text, color) { statusBar.innerText = text; statusBar.style.color = color; statusBar.style.borderColor = color; }
+
+        function onResults(results) {
+            ctx.save(); ctx.clearRect(0,0, canvasEl.width, canvasEl.height); ctx.drawImage(results.image, 0,0, canvasEl.width, canvasEl.height);
+
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                const hands = results.multiHandLandmarks;
+                
+                hands.forEach(h => {
+                    drawConnectors(ctx, h, HAND_CONNECTIONS, {color: '#00f3ff', lineWidth: 2});
+                    drawLandmarks(ctx, h, {color: '#bc13fe', radius: 1});
+                });
+
+                if (hands.length === 2) {
+                    const h1 = hands[0], h2 = hands[1];
+                    const dist = Math.hypot(h1[0].x - h2[0].x, h1[0].y - h2[0].y);
+                    
+                    const leftFist = h1[8].y > h1[6].y && h1[12].y > h1[10].y;
+                    const rightFist = h2[8].y > h2[6].y && h2[12].y > h2[10].y;
+                    const isCrossed = Math.abs(h1[0].x - h2[0].x) < 0.1 && h1[0].y > 0.5;
+                    const isHandsUp = h1[0].y > 0.8 && h2[0].y > 0.8;
+
+                    if (isHandsUp) {
+                        setStatus("SYSTEM RESET", "#fff");
+                        leftHalf.position.set(0,0,0); rightHalf.position.set(0,0,0);
+                        leftHalf.rotation.set(0,0,0); rightHalf.rotation.set(0,0,0);
+                        layersGroup.visible = false; shield.material.opacity = 0;
+                        crustMat.wireframe = false; sun.intensity = 1.5; crustMat.color.set(0xdddddd);
+                        orbitSpeed = 0.002; targetCamX = 0; targetCamY = 0; targetCamZ = defaultZ; isDestroyed = false; pMat.opacity = 0;
+                    } else if (isCrossed) {
+                        setStatus("SHIELD ACTIVE", "#00f3ff"); shield.material.opacity = 0.3; shield.rotation.y += 0.05;
+                    } else if (leftFist && rightFist) {
+                        setStatus("CRITICAL: DESTROY", "#ff3300"); isDestroyed = true;
+                        leftHalf.position.x = THREE.MathUtils.lerp(leftHalf.position.x, -0.6, 0.1);
+                        rightHalf.position.x = THREE.MathUtils.lerp(rightHalf.position.x, 0.6, 0.1);
+                        leftHalf.rotation.z += 0.1; rightHalf.rotation.z -= 0.1;
+                        leftHalf.position.y += (Math.random()-0.5)*0.2; 
+                        layersGroup.visible = true; mantle.emissiveIntensity = 2; pMat.opacity = 1;
+                    } else if (dist > 0.4 && !isDestroyed) {
+                        setStatus("LAYER SCAN", "#ffcc00");
+                        leftHalf.position.x = THREE.MathUtils.lerp(leftHalf.position.x, -8, 0.1);
+                        rightHalf.position.x = THREE.MathUtils.lerp(rightHalf.position.x, 8, 0.1);
+                        layersGroup.visible = true; pMat.opacity = 0;
+                    } else if (dist < 0.2) {
+                        setStatus("RECOVERING", "#00ff00"); isDestroyed = false; pMat.opacity = 0; mantle.emissiveIntensity = 0.8;
+                        leftHalf.position.x = THREE.MathUtils.lerp(leftHalf.position.x, 0, 0.1);
+                        rightHalf.position.x = THREE.MathUtils.lerp(rightHalf.position.x, 0, 0.1);
+                        leftHalf.rotation.z *= 0.8; rightHalf.rotation.z *= 0.8;
+                        if(Math.abs(leftHalf.position.x) < 0.2) layersGroup.visible = false;
+                    } else {
+                        shield.material.opacity = 0;
+                    }
+                } else {
+                    const h = hands[0];
+                    const up = (i) => h[i].y < h[i-2].y;
+                    const iUp = up(8), mUp = up(12), rUp = up(16), pUp = up(20), tUp = h[4].y < h[3].y;
+                    
+                    const isFist = !iUp && !mUp && !rUp && !pUp;
+                    const isV = iUp && mUp && !rUp && !pUp;
+                    const isPoint = iUp && !mUp && !rUp && !pUp;
+                    const isSpider = iUp && !mUp && !rUp && pUp;
+                    const isOK = Math.hypot(h[4].x - h[8].x, h[4].y - h[8].y) < 0.05 && mUp && rUp;
+                    const isThumbsUp = tUp && !iUp && !mUp;
+                    const isThumbsDown = h[4].y > h[3].y && !iUp && !mUp;
+                    const isLShape = tUp && iUp && !mUp;
+
+                    if (isFist) { setStatus("ORBIT FROZEN", "#ffcc00"); orbitSpeed = 0; }
+                    else if (isV) { setStatus("HYPER SPEED", "#bc13fe"); orbitSpeed = 0.1; }
+                    else if (isPoint) { setStatus("ZOOM IN", "#fff"); targetCamZ = window.innerWidth < 768 ? 20 : 12; }
+                    else if (isOK) { setStatus("WIREFRAME", "#00f3ff"); crustMat.wireframe = true; }
+                    else if (isSpider) { setStatus("DISCO GLOW", "#bc13fe"); crustMat.color.setHSL(Math.random(), 1, 0.5); }
+                    else if (isThumbsUp) { setStatus("MAX BRIGHTNESS", "#ffaa00"); sun.intensity = 3; }
+                    else if (isThumbsDown) { setStatus("DARK MODE", "#444"); sun.intensity = 0.2; crustMat.color.set(0xffffff); }
+                    else if (isLShape) { setStatus("ANGLE SHIFT", "#fff"); targetCamY = 15; }
+                    else {
+                        setStatus("TRACKING", "#00f3ff"); orbitSpeed = 0.002; crustMat.wireframe = false; crustMat.color.set(0xdddddd); sun.intensity = 1.5;
+                        targetCamX = (h[0].x - 0.5) * -40;
+                        targetCamY = (h[0].y - 0.5) * -40;
+                        targetCamZ = defaultZ;
+                    }
+                }
+            } else { setStatus("AWAITING INPUT", "#aaa"); orbitSpeed = 0.002; targetCamX = 0; targetCamY = 0; targetCamZ = defaultZ; }
+            
+            ctx.restore();
+        }
+
+        const handsParams = new Hands({locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`});
+        handsParams.setOptions({maxNumHands: 2, modelComplexity: 0, minDetectionConfidence: 0.75, minTrackingConfidence: 0.75});
+        handsParams.onResults(onResults);
+
+        new Camera(videoEl, { onFrame: async () => { await handsParams.send({image: videoEl}); }, width: 480, height: 360 }).start();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            mainGroup.rotation.y += orbitSpeed;
+            if(isDestroyed) particles.rotation.y -= 0.02;
+            
+            camera.position.x = THREE.MathUtils.lerp(camera.position.x, targetCamX, 0.05);
+            camera.position.y = THREE.MathUtils.lerp(camera.position.y, targetCamY, 0.05);
+            camera.position.z = THREE.MathUtils.lerp(camera.position.z, targetCamZ, 0.05);
+            camera.lookAt(scene.position);
+
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        window.addEventListener('resize', () => {
+            defaultZ = window.innerWidth < 768 ? 40 : 25;
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        canvasEl.width = 220; canvasEl.height = 165;
+    </script>
+</body>
+</html>

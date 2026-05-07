@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TechMindMit | Hyper-Realistic Universe AI</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&family=Share+Tech+Mono&display=swap');
+        :root { --hologram: rgba(0, 243, 255, 0.7); --neon-purple: #bc13fe; --real-void: #010103; }
+        
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: var(--real-void); color: #fff; overflow: hidden; font-family: 'Share Tech Mono', monospace; }
+
+        /* Perfect Responsive Layout */
+        #ui-wrapper {
+            position: absolute; display: grid;
+            grid-template-areas: "header header header" "left center right" "footer footer footer";
+            grid-template-columns: 320px 1fr 320px; grid-template-rows: 100px 1fr 200px;
+            width: 100vw; height: 100vh; pointer-events: none; z-index: 10; padding: 15px; box-sizing: border-box;
+        }
+
+        .panel { background: rgba(5, 5, 10, 0.7); backdrop-filter: blur(15px); border: 1px solid var(--neon-purple); border-radius: 4px; box-shadow: 0 0 20px rgba(188, 19, 254, 0.2); margin: 10px; padding: 15px; pointer-events: auto; }
+        
+        #header { grid-area: header; display: flex; justify-content: center; align-items: center; }
+        #header h1 { font-family: 'Orbitron', sans-serif; font-size: clamp(1.5rem, 5vw, 2.5rem); letter-spacing: 12px; color: #fff; text-shadow: 0 0 15px var(--hologram); margin: 0; }
+
+        #l-bar { grid-area: left; display: flex; flex-direction: column; gap: 10px; }
+        #cam-container { width: 100%; height: 180px; border: 2px solid var(--hologram); overflow: hidden; background: #000; position: relative; border-radius: 4px; }
+        #v-in { display: none; } #c-out { width: 100%; height: 100%; transform: scaleX(-1); filter: brightness(1.2) contrast(1.1); }
+
+        .log-txt { font-size: 11px; color: var(--hologram); margin: 3px 0; }
+        #status-label { font-family: 'Orbitron'; font-size: 18px; color: #fff; text-align: center; border-top: 2px solid var(--neon-purple); padding: 10px; margin-top: 10px; letter-spacing: 2px; }
+        
+        .tutorial { font-size: 10px; color: #aaa; background: rgba(255,255,255,0.05); padding: 5px; margin-top: 10px; line-height: 1.4; }
+
+        @media (max-width: 900px) { #ui-wrapper { grid-template-areas: "header" "center" "footer"; grid-template-columns: 1fr; grid-template-rows: 80px 1fr 300px; } #l-bar, [style*="grid-area: right"] { display: none; } }
+    </style>
+</head>
+<body>
+
+    <div id="ui-wrapper">
+        <div id="header"><h1>TECHMINDMIT</h1></div>
+        <div id="l-bar" class="panel">
+            <div class="log-txt">> OS: CINEMATIC_COSMOS_V10</div>
+            <div class="log-txt">> GESTURE: <span id="g-status" style="color:red">OFFLINE</span></div>
+            <div class="log-txt">> OPTICS: HYPER_REALISTIC</div>
+            
+            <div class="tutorial">
+                <b>COMMANDS:</b><br>
+                ✊ Fist: Supernova Pulse<br>
+                ✌️ V-Sign: Hyper Speed<br>
+                👌 Pinch: Zoom Lock<br>
+                🖐️ Palm XY: Smooth Tracking
+            </div>
+            <div id="status-label">READY</div>
+        </div>
+
+        <div style="grid-area: right; display: flex; flex-direction: column; justify-content: flex-end;">
+            <div class="panel">
+                <div id="cam-container">
+                    <video id="v-in" playsinline></video>
+                    <canvas id="c-out"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const videoElement = document.getElementById('v-in');
+        const canvasElement = document.getElementById('c-out');
+        const canvasCtx = canvasElement.getContext('2d');
+        const statusLabel = document.getElementById('status-label');
+        const gStatus = document.getElementById('g-status');
+
+        // --- 1. HYPER-REALISTIC COSMIC ENGINE ---
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 5000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.body.appendChild(renderer.domElement);
+
+        // --- EARTH GROUP SETUP ---
+        const earthGroup = new THREE.Group();
+        const loader = new THREE.TextureLoader();
+
+        // High-Resolution Earth Textures
+        const earthMap = loader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_atmos_2048.jpg');
+        const earthBump = loader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_atmos_2048.jpg');
+        const earthNight = loader.load('https://unpkg.com/three-globe/example/img/earth-night.jpg');
+
+        // earth geometry
+        const earthGeo = new THREE.SphereGeometry(6, 128, 128);
+
+        // earth Material
+        const earthMat = new THREE.MeshPhongMaterial({ 
+            map: earthMap,
+            bumpMap: earthBump,
+            bumpScale: 0.1, // ઊંચાઈનું પ્રમાણ
+            specular: new THREE.Color('grey'),
+            shininess: 10,
+            emissiveMap: earthNight, // રાત્રિની લાઈટ્સ
+            emissive: new THREE.Color(0xffff88),
+            emissiveIntensity: 0.3
+        });
+        const earth = new THREE.Mesh(earthGeo, earthMat);
+        earthGroup.add(earth);
+
+        // --- DYNAMIC CLOUDS LAYER ---
+        const cloudGeo = new THREE.SphereGeometry(6.12, 128, 128);
+        const cloudMat = new THREE.MeshLambertMaterial({
+            map: loader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_clouds_2048.png'),
+            transparent: true,
+            opacity: 0.3,
+            depthWrite: false, // પડછાયા યોગ્ય રીતે પડે તે માટે
+        });
+        const clouds = new THREE.Mesh(cloudGeo, cloudMat);
+        earthGroup.add(clouds);
+
+        // --- ATMOSPHERIC GLOW (Fresnel Effect) ---
+        const glowGeo = new THREE.SphereGeometry(6.3, 128, 128);
+        const glowMat = new THREE.MeshBasicMaterial({
+            color: 0x00aaff,
+            transparent: true,
+            opacity: 0.1,
+            side: THREE.BackSide, // અંદરથી ચમકશે
+            blending: THREE.AdditiveBlending // બીજા ગ્રાફિક્સ સાથે મિક્સ થશે
+        });
+        const glow = new THREE.Mesh(glowGeo, glowMat);
+        scene.add(glow);
+
+        scene.add(earthGroup);
+
+        // --- LIGHTING ---
+        // Sun Light (Directional)
+        const sunLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        sunLight.position.set(5, 3, 5);
+        scene.add(sunLight);
+        // Ambient Light (Overall void lighting)
+        scene.add(new THREE.AmbientLight(0x050505));
+
+        // --- DEEP SPACE ENVIRONMENT (Graphics) ---
+        function addCosmos(count, size, color, range) {
+            const geo = new THREE.BufferGeometry();
+            const pos = [];
+            for(let i=0; i<count; i++) pos.push((Math.random()-0.5)*range, (Math.random()-0.5)*range, (Math.random()-0.5)*range);
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+            return new THREE.Points(geo, new THREE.PointsMaterial({color, size, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending}));
+        }
+        scene.add(addCosmos(10000, 0.4, 0xffffff, 4000)); // Stars
+        scene.add(addCosmos(2000, 2.0, 0x111122, 1500));  // Dark Void Gas
+        scene.add(addCosmos(1000, 1.0, 0xbc13fe, 1000));  // Deep Purple Nebula
+        scene.add(addCosmos(800, 0.8, 0x00f3ff, 800));   // Cyan Dust
+
+        // Supernova Ring (Gesture Effect)
+        const pulse = new THREE.Mesh(
+            new THREE.TorusGeometry(8, 0.05, 16, 100),
+            new THREE.MeshBasicMaterial({ color: 0x00f3ff, transparent: true, opacity: 0 })
+        );
+        scene.add(pulse);
+
+        camera.position.z = 25;
+
+        // --- 2. ADVANCED GESTURE & DYNAMIC ANIMATION ENGINE ---
+        function onResults(results) {
+            canvasCtx.save();
+            canvasCtx.clearRect(0,0, 240, 180);
+            canvasCtx.drawImage(results.image, 0, 0, 240, 180);
+
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                gStatus.innerText = "ONLINE"; gStatus.style.color = "#00f3ff";
+                const hand = results.multiHandLandmarks[0];
+
+                // NEURAL HOLOGRAM LINES
+                drawConnectors(canvasCtx, hand, HAND_CONNECTIONS, {color: 'rgba(0, 243, 255, 0.5)', lineWidth: 3}); 
+                drawLandmarks(canvasCtx, hand, {color: '#fff', lineWidth: 1, radius: 2});
+
+                // GESTURE RECOGNITION
+                const isFist = hand[8].y > hand[6].y && hand[12].y > hand[10].y && hand[16].y > hand[14].y;
+                const isV = hand[8].y < hand[6].y && hand[12].y < hand[10].y && hand[16].y > hand[14].y;
+                const pinchDist = Math.hypot(hand[4].x - hand[8].x, hand[4].y - hand[8].y);
+
+                if (isFist) {
+                    // જૂની સુપરનોવા ઈફેક્ટ
+                    statusLabel.innerText = "SUPERNOVA"; statusLabel.style.color = "#00f3ff";
+                    pulse.material.opacity = 1; pulse.scale.addScalar(0.4);
+                    if(pulse.scale.x > 8) pulse.scale.set(1,1,1);
+                    earth.material.emissiveIntensity = 1.0; // Night Lights go full bright
+                } else if (isV) {
+                    // જૂની હાઈપર સ્પીડ ઈફેક્ટ
+                    statusLabel.innerText = "HYPER SPEED"; statusLabel.style.color = "#bc13fe";
+                    earth.rotation.y += 0.08; clouds.rotation.y += 0.1; // પૃથ્વી અને વાદળો ઝડપથી ફરશે
+                    earth.material.emissiveIntensity = 0.3;
+                } else if (pinchDist < 0.05) {
+                    // નવી ઝૂમ ઈફેક્ટ
+                    statusLabel.innerText = "ZOOM LOCK"; statusLabel.style.color = "#fff";
+                    camera.position.z += (15 - camera.position.z) * 0.1;
+                    earth.material.emissiveIntensity = 0.3;
+                } else {
+                    // NEUTRAL MODE
+                    statusLabel.innerText = "NEUTRAL"; statusLabel.style.color = "#bc13fe";
+                    pulse.material.opacity *= 0.9;
+                    earth.material.emissiveIntensity = 0.3;
+                    camera.position.z += (25 - camera.position.z) * 0.05;
+                }
+
+                // Smooth Tracking (Palm movement mapping)
+                camera.position.x += ((hand[0].x - 0.5) * -45 - camera.position.x) * 0.05;
+                camera.position.y += ((hand[0].y - 0.5) * -45 - camera.position.y) * 0.05;
+                camera.lookAt(scene.position);
+            } else {
+                gStatus.innerText = "OFFLINE"; gStatus.style.color = "red";
+            }
+            canvasCtx.restore();
+        }
+
+        const hands = new Hands({locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`});
+        hands.setOptions({maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.8});
+        hands.onResults(onResults);
+        new Camera(videoElement, {onFrame: async () => {await hands.send({image: videoElement})}, width: 640, height: 480}).start();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            // Dynamic Rotation
+            earth.rotation.y += 0.0015;
+            clouds.rotation.y += 0.002; // વાદળો સહેજ ઝડપી ફરશે
+            renderer.render(scene, camera);
+        }
+        animate();
+        
+        window.addEventListener('resize', () => { camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+        canvasElement.width = 240; canvasElement.height = 180;
+    </script>
+</body>
+</html>
