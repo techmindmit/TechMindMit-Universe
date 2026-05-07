@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Futuristic Gesture OS</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0a0a0a; color: #0f0; font-family: system-ui, sans-serif; overflow: hidden; }
+    video { display: none; }
+    canvas { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; transform: scaleX(-1); }
+    #ui {
+      position: fixed; top: 16px; left: 16px; z-index: 10;
+      background: rgba(10,10,10,0.85); border: 1px solid #333; border-radius: 12px;
+      padding: 16px; width: 260px; backdrop-filter: blur(8px);
+    }
+    h2 { font-size: 18px; margin-bottom: 8px; color: #0f0; }
+    #status { font-size: 13px; color: #888; margin-bottom: 10px; }
+    #log { height: 90px; overflow-y: auto; font-family: monospace; font-size: 12px; color: #0f0; margin-bottom: 12px; padding-right: 4px; }
+    .btns { display: flex; flex-wrap: wrap; gap: 6px; }
+    button {
+      flex: 1 1 45%; padding: 8px 10px; background: #1a1a2e; color: #fff; border: 1px solid #444;
+      border-radius: 6px; cursor: pointer; font-size: 12px; transition: 0.2s;
+    }
+    button:hover { background: #2a2a4e; border-color: #0f0; }
+    button.active { background: #0f0; color: #000; font-weight: bold; }
+    .hint { font-size: 11px; color: #666; margin-top: 8px; line-height: 1.4; }
+  </style>
+</head>
+<body>
+  <video id="webcam" autoplay playsinline></video>
+  <canvas id="canvas"></canvas>
+
+  <div id="ui">
+    <h2>🖐 Gesture OS</h2>
+    <div id="status">🔄 Loading AI Vision...</div>
+    <div id="log"></div>
+    <div class="btns">
+      <button data-mode="none" class="active">⭕ None</button>
+      <button data-mode="auracart">🛒 AuraCart</button>
+      <button data-mode="flowboard">🎨 FlowBoard</button>
+      <button data-mode="resonance">🌿 Resonance</button>
+      <button data-mode="sculptcode">💻 SculptCode</button>
+      <button data-mode="lumina">🎬 Lumina</button>
+      <button data-mode="signaverse">✋ SignaVerse</button>
+    </div>
+    <div class="hint">
+      👉 <b>Pinch</b> thumb+index<br>
+      👉 <b>Swipe</b> wrist left/right/up/down<br>
+      👉 <b>Open Palm</b> for reset/trigger
+    </div>
+  </div>
+
+  <script type="module">
+    import { FilesetResolver, HandLandmarker } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/+esm';
+
+    const video = document.getElementById('webcam');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const status = document.getElementById('status');
+    const log = document.getElementById('log');
+    const buttons = document.querySelectorAll('button[data-mode]');
+
+    let landmarker = null;
+    let currentMode = 'none';
+    let lastGestures = { pinch: false, palm: false, swipe: null };
+    let wristHistory = [];
+    let sceneState = { x: 0, y: 0, hue: 180, lines: [], code: 'init()', story: 'Act 1', signs: [] };
+    let ready = false;
+
+    // Resize canvas
+    const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+    window.addEventListener('resize', resize);
+    resize();
+
+    // Logger
+    const logEvent = (msg) => {
+      const div = document.createElement('div');
+      div.textContent = `⚡ ${msg}`;
+      log.prepend(div);
+      if (log.children.length > 30) log.lastChild.remove();
+    };
+
+    // 1. Initialize Camera
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
+      .then(stream => {
+        video.srcObject = stream;
+        video.onloadedmetadata = () => initAI();
+      })
+      .catch(err => {
+        status.textContent = '❌ Camera denied. Allow webcam access.';
+        console.error(err);
+      });
+
+    // 2. Initialize MediaPipe AI
+    async function initAI() {
+      try {
+        status.textContent = '📦 Loading Hand Landmarker...';
+        const vision = await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm');
+        landmarker = await HandLandmarker.createFromOptions(vision, {
+          baseOptions: { modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/latest/hand_landmarker.task', delegate: 'GPU' },
+          runningMode: 'VIDEO', numHands: 1
+        });
+        status.textContent = '✅ AI Ready. Show your hand!';
+        ready = true;
+        runDetection();
+      } catch (e) {
+        status.textContent = '❌ AI Load Failed. Check console.';
+        console.error(e);
+      }
+    }
+
+    // 3. Gesture Detection Loop
+    function runDetection() {
+      if (video.readyState >= 2) {
+        const results = landmarker.detectForVideo(video, performance.now());
+        if (results.handedness.length > 0) {
+          processGestures(results.landmarks[0]);
+        }
+      }
+      requestAnimationFrame(runDetection);
+    }
+
+    // 4. Gesture Engine
+    function processGestures(kp) {
+      // Smoothing & tracking
+      const wrist = kp[0];
+      wristHistory.push({ x: wrist.x, y: wrist.y, t: performance.now() });
+      if (wristHistory.length > 10) wristHistory.shift();
+
+      // Pinch detection (thumb tip 4 + index tip 8)
+      const pinchDist = Math.hypot(kp[4].x - kp[8].x, kp[4].y - kp[8].y);
+      const isPinch = pinchDist < 0.06;
+      
+      // Open palm (all finger tips higher than PIP joints in Y)
+      const isOpenPalm = [8,12,16,20].every(i => kp[i].y < kp[i-2].y);
+
+      // Swipe detection (wrist velocity)
+      let swipe = null;
+      if (wristHistory.length >= 4) {
+        const dx = wristHistory[wristHistory.length-1].x - wristHistory[wristHistory.length-4].x;
+        const dy = wristHistory[wristHistory.length-1].y - wristHistory[wristHistory.length-4].y;
+        const dt = (wristHistory[wristHistory.length-1].t - wristHistory[wristHistory.length-4].t) / 1000;
+        if (dt > 0) {
+          const vx = dx / dt, vy = dy / dt;
+          if (Math.abs(vx) > 1.2) swipe = vx > 0 ? 'swipe_right' : 'swipe_left';
+          else if (Math.abs(vy) > 1.2) swipe = vy > 0 ? 'swipe_down' : 'swipe_up';
+        }
+      }
+
+      // State machine to prevent spam
+      if (isPinch && !lastGestures.pinch) triggerGesture('pinch', 1 - pinchDist/0.06);
+      if (isOpenPalm && !lastGestures.palm) triggerGesture('open_palm');
+      if (swipe && swipe !== lastGestures.swipe) triggerGesture(swipe);
+
+      lastGestures = { pinch: isPinch, palm: isOpenPalm, swipe };
+      drawScene(kp, isPinch, isOpenPalm);
+    }
+
+    // 5. Adapter System
+    function triggerGesture(type, strength = 1) {
+      logEvent(`${type} (${strength.toFixed(2)})`);
+      if (currentMode === 'none') return;
+      adapters[currentMode]?.(type, strength);
+    }
+
+    const adapters = {
+      auracart: (type) => {
+        if (type === 'swipe_right') sceneState.x = Math.min(sceneState.x + 40, canvas.width - 100);
+        if (type === 'swipe_left') sceneState.x = Math.max(sceneState.x - 40, 50);
+        if (type === 'pinch') logEvent('📦 Item Selected');
+        if (type === 'open_palm') logEvent('🛒 Reset Cart');
+      },
+      flowboard: (type, s) => {
+        if (type === 'open_palm') sceneState.lines = [];
+        if (type === 'pinch') sceneState.lines.push({ x: sceneState.x, y: sceneState.y, w: 120 * s });
+      },
+      resonance: (type) => {
+        if (type === 'swipe_up') sceneState.hue = (sceneState.hue + 20) % 360;
+        if (type === 'swipe_down') sceneState.hue = (sceneState.hue - 20 + 360) % 360;
+        if (type === 'pinch') logEvent('🎵 Pulse Triggered');
+      },
+      sculptcode: (type) => {
+        if (type === 'swipe_right') sceneState.code = 'export default () => <div>AI Generated</div>';
+        if (type === 'swipe_left') sceneState.code = 'const style = { display: "flex" }';
+        if (type === 'pinch') logEvent('🐛 Debug Mode ON');
+        if (type === 'open_palm') logEvent('▶️ Live Preview Run');
+      },
+      lumina: (type) => {
+        if (type === 'swipe_up') sceneState.story = 'Act 2: Conflict';
+        if (type === 'swipe_down') sceneState.story = 'Act 1: Setup';
+        if (type === 'pinch') logEvent('🎬 Cut to Close-Up');
+      },
+      signaverse: (type, s) => {
+        if (type === 'pinch') sceneState.signs.push({ t: Date.now(), conf: s.toFixed(2) });
+        if (type === 'open_palm') logEvent('✅ Phrase Completed');
+      }
+    };
+
+    // 6. Canvas Renderer
+    function drawScene(kp, isPinch, isOpenPalm) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // Mirror fix for drawing
+      ctx.save();
+      ctx.scale(-1, 1);
+      ctx.translate(-canvas.width, 0);
+
+      // Hand keypoints
+      ctx.fillStyle = '#0f0';
+      kp.forEach(p => {
+        ctx.beginPath();
+        ctx.arc(p.x * canvas.width, p.y * canvas.height, 4, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // Adapter Visualization
+      if (currentMode === 'auracart') {
+        ctx.fillStyle = `hsl(200, 70%, 50%)`;
+        ctx.fillRect(sceneState.x, 100, 80, 100);
+        ctx.fillStyle = '#fff'; ctx.font = '14px sans-serif';
+        ctx.fillText('Product', sceneState.x + 10, 150);
+      }
+      if (currentMode === 'flowboard') {
+        sceneState.lines.forEach(l => {
+          ctx.strokeStyle = '#0ff'; ctx.lineWidth = 3;
+          ctx.beginPath(); ctx.moveTo(l.x, l.y); ctx.lineTo(l.x + l.w, l.y + 40); ctx.stroke();
+        });
+      }
+      if (currentMode === 'resonance') {
+        ctx.fillStyle = `hsl(${sceneState.hue}, 50%, 10%)`;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+      if (currentMode === 'sculptcode') {
+        ctx.fillStyle = '#1a1a2e';
+        ctx.fillRect(50, 50, 300, 100);
+        ctx.fillStyle = '#0f0'; ctx.font = '12px monospace';
+        ctx.fillText(sceneState.code, 60, 90);
+      }
+      if (currentMode === 'lumina') {
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillRect(0, canvas.height/2 - 40, canvas.width, 80);
+        ctx.fillStyle = '#fff'; ctx.font = '24px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText(sceneState.story, canvas.width/2, canvas.height/2 + 8);
+      }
+      if (currentMode === 'signaverse') {
+        ctx.fillStyle = '#ff0'; ctx.font = '14px monospace';
+        sceneState.signs.forEach((s, i) => ctx.fillText(`Sign ${i+1}: ${s.conf}`, 50, 50 + i*20));
+      }
+
+      // Status indicators
+      if (isPinch) { ctx.fillStyle = '#ff0'; ctx.beginPath(); ctx.arc(80, 80, 8, 0, Math.PI*2); ctx.fill(); }
+      if (isOpenPalm) { ctx.fillStyle = '#0f0'; ctx.beginPath(); ctx.arc(100, 80, 8, 0, Math.PI*2); ctx.fill(); }
+
+      ctx.restore();
+    }
+
+    // 7. UI Binding
+    buttons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        buttons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentMode = btn.dataset.mode;
+        status.textContent = `🌐 Mode: ${btn.textContent}`;
+        sceneState = { x: 100, y: 100, hue: 180, lines: [], code: 'init()', story: 'Act 1', signs: [] };
+      });
+    });
+  </script>
+</body>
+</html>
